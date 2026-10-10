@@ -1,0 +1,149 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role assignment for the Cloud Audit Logs security console.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["admin", "analyst", "viewer"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLoginAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt", "lastLoginAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Normalized Google Cloud Audit Log entry stored persistently for inspection, retention, and threat detection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "insertId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "principalEmail": { "type": "string", "maxLength": 256 },
+        "serviceName": { "type": "string", "maxLength": 128 },
+        "methodName": { "type": "string", "maxLength": 256 },
+        "resourceName": { "type": "string", "maxLength": 512 },
+        "severity": { "type": "string", "enum": ["DEFAULT", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL", "ALERT", "EMERGENCY"] },
+        "callerIp": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["SUCCESS", "FAILURE"] },
+        "statusCode": { "type": "number" },
+        "statusMessage": { "type": "string", "maxLength": 512 },
+        "category": { "type": "string", "enum": ["ADMIN_ACTIVITY", "DATA_ACCESS", "SYSTEM_EVENT", "POLICY_DENIED"] },
+        "source": { "type": "string", "enum": ["GCP_LIVE", "DEMO"] },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "rawPayload": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "insertId", "timestamp", "principalEmail", "serviceName", "methodName", "resourceName", "severity", "callerIp", "status", "statusCode", "statusMessage", "category", "source", "projectId", "rawPayload", "createdAt"]
+    },
+    "RetentionPolicy": {
+      "title": "RetentionPolicy",
+      "description": "Application-level retention policy governing how long audit log records are stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "logCategory": { "type": "string", "enum": ["ALL", "ADMIN_ACTIVITY", "DATA_ACCESS", "SYSTEM_EVENT", "POLICY_DENIED"] },
+        "retentionDays": { "type": "number" },
+        "status": { "type": "string", "enum": ["ENABLED", "DISABLED"] },
+        "lastExecutionAt": { "type": "string", "maxLength": 64 },
+        "lastDeletedCount": { "type": "number" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "description", "logCategory", "retentionDays", "status", "lastExecutionAt", "lastDeletedCount", "createdBy", "createdAt", "updatedAt"]
+    },
+    "SecurityAlert": {
+      "title": "SecurityAlert",
+      "description": "Rule-based security alert triggered by suspicious audit log patterns.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "eventTime": { "type": "string", "maxLength": 64 },
+        "associatedLogId": { "type": "string", "maxLength": 128 },
+        "principalEmail": { "type": "string", "maxLength": 256 },
+        "callerIp": { "type": "string", "maxLength": 64 },
+        "ruleId": { "type": "string", "enum": ["REPEATED_FAILURES", "UNUSUAL_IAM_CHANGE", "SENSITIVE_ADMIN_OP", "ACTIVITY_SPIKE", "UNUSUAL_IP"] },
+        "detectionReason": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["OPEN", "REVIEWED", "CONFIRMED_INCIDENT", "DISMISSED"] },
+        "source": { "type": "string", "enum": ["GCP_LIVE", "DEMO"] },
+        "reviewedBy": { "type": "string", "maxLength": 256 },
+        "reviewedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "severity", "title", "description", "eventTime", "associatedLogId", "principalEmail", "callerIp", "ruleId", "detectionReason", "status", "source", "reviewedBy", "reviewedAt", "createdAt", "updatedAt"]
+    },
+    "RetentionExecution": {
+      "title": "RetentionExecution",
+      "description": "Audit record of an application-level retention cleanup execution.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "policyId": { "type": "string", "maxLength": 128 },
+        "policyName": { "type": "string", "maxLength": 120 },
+        "logCategory": { "type": "string", "maxLength": 64 },
+        "retentionDays": { "type": "number" },
+        "cutoffTimestamp": { "type": "string", "maxLength": 64 },
+        "deletedCount": { "type": "number" },
+        "executedBy": { "type": "string", "maxLength": 256 },
+        "status": { "type": "string", "enum": ["COMPLETED", "DRY_RUN", "FAILED"] },
+        "details": { "type": "string", "maxLength": 500 },
+        "executedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "policyId", "policyName", "logCategory", "retentionDays", "cutoffTimestamp", "deletedCount", "executedBy", "status", "details", "executedAt"]
+    },
+    "IntegrationSetting": {
+      "title": "IntegrationSetting",
+      "description": "Configuration and status metadata for Google Cloud Logging integration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "gcpProjectId": { "type": "string", "maxLength": 128 },
+        "logFilter": { "type": "string", "maxLength": 500 },
+        "connectionStatus": { "type": "string", "enum": ["CONNECTED", "DISCONNECTED", "MISSING_CREDENTIALS", "ERROR"] },
+        "lastSyncAt": { "type": "string", "maxLength": 64 },
+        "lastSyncCount": { "type": "number" },
+        "lastError": { "type": "string", "maxLength": 500 },
+        "demoMode": { "type": "boolean" },
+        "updatedBy": { "type": "string", "maxLength": 256 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "gcpProjectId", "logFilter", "connectionStatus", "lastSyncAt", "lastSyncCount", "lastError", "demoMode", "updatedBy", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and RBAC roles."
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Normalized audit log entries."
+    },
+    "/retention_policies/{policyId}": {
+      "schema": { "$ref": "#/entities/RetentionPolicy" },
+      "description": "Application-level retention policies."
+    },
+    "/security_alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/SecurityAlert" },
+      "description": "Rule-based security alerts."
+    },
+    "/retention_executions/{executionId}": {
+      "schema": { "$ref": "#/entities/RetentionExecution" },
+      "description": "Execution history of retention cleanups."
+    },
+    "/integration_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/IntegrationSetting" },
+      "description": "Cloud Logging connection configuration and sync telemetry."
+    }
+  }
+}

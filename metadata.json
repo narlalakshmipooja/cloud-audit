@@ -1,0 +1,6 @@
+{
+  "name": "Cloud Audit Logs Retention & Analysis Design",
+  "description": "Academic cloud security console for collecting, storing, analyzing, and managing retention policies for Google Cloud audit logs with rule-based threat detection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

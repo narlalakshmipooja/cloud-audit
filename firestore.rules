@@ -1,0 +1,242 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == '2400560511bba@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isAnalystOrAdmin() {
+      return isAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'analyst'
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt', 'lastLoginAt']) &&
+             data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt', 'lastLoginAt']) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 256 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 128 &&
+             data.role is string && data.role in ['admin', 'analyst', 'viewer'] &&
+             data.createdAt is timestamp &&
+             data.lastLoginAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'insertId', 'timestamp', 'principalEmail', 'serviceName', 'methodName', 'resourceName', 'severity', 'callerIp', 'status', 'statusCode', 'statusMessage', 'category', 'source', 'projectId', 'rawPayload', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'insertId', 'timestamp', 'principalEmail', 'serviceName', 'methodName', 'resourceName', 'severity', 'callerIp', 'status', 'statusCode', 'statusMessage', 'category', 'source', 'projectId', 'rawPayload', 'createdAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.insertId is string && data.insertId.size() >= 1 && data.insertId.size() <= 128 &&
+             data.timestamp is string && data.timestamp.size() >= 1 && data.timestamp.size() <= 64 &&
+             data.principalEmail is string && data.principalEmail.size() >= 1 && data.principalEmail.size() <= 256 &&
+             data.serviceName is string && data.serviceName.size() >= 1 && data.serviceName.size() <= 128 &&
+             data.methodName is string && data.methodName.size() >= 1 && data.methodName.size() <= 256 &&
+             data.resourceName is string && data.resourceName.size() >= 1 && data.resourceName.size() <= 512 &&
+             data.severity is string && data.severity in ['DEFAULT', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'] &&
+             data.callerIp is string && data.callerIp.size() <= 64 &&
+             data.status is string && data.status in ['SUCCESS', 'FAILURE'] &&
+             data.statusCode is number &&
+             data.statusMessage is string && data.statusMessage.size() <= 512 &&
+             data.category is string && data.category in ['ADMIN_ACTIVITY', 'DATA_ACCESS', 'SYSTEM_EVENT', 'POLICY_DENIED'] &&
+             data.source is string && data.source in ['GCP_LIVE', 'DEMO'] &&
+             data.projectId is string && data.projectId.size() >= 1 && data.projectId.size() <= 128 &&
+             data.rawPayload is map &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidRetentionPolicy(data) {
+      return data.keys().hasAll(['id', 'name', 'description', 'logCategory', 'retentionDays', 'status', 'lastExecutionAt', 'lastDeletedCount', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['id', 'name', 'description', 'logCategory', 'retentionDays', 'status', 'lastExecutionAt', 'lastDeletedCount', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.description is string && data.description.size() <= 500 &&
+             data.logCategory is string && data.logCategory in ['ALL', 'ADMIN_ACTIVITY', 'DATA_ACCESS', 'SYSTEM_EVENT', 'POLICY_DENIED'] &&
+             data.retentionDays is number && data.retentionDays >= 1 && data.retentionDays <= 3650 &&
+             data.status is string && data.status in ['ENABLED', 'DISABLED'] &&
+             data.lastExecutionAt is string && data.lastExecutionAt.size() <= 64 &&
+             data.lastDeletedCount is number && data.lastDeletedCount >= 0 &&
+             data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidSecurityAlert(data) {
+      return data.keys().hasAll(['id', 'severity', 'title', 'description', 'eventTime', 'associatedLogId', 'principalEmail', 'callerIp', 'ruleId', 'detectionReason', 'status', 'source', 'reviewedBy', 'reviewedAt', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['id', 'severity', 'title', 'description', 'eventTime', 'associatedLogId', 'principalEmail', 'callerIp', 'ruleId', 'detectionReason', 'status', 'source', 'reviewedBy', 'reviewedAt', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.severity is string && data.severity in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 1000 &&
+             data.eventTime is string && data.eventTime.size() >= 1 && data.eventTime.size() <= 64 &&
+             data.associatedLogId is string && data.associatedLogId.size() >= 1 && data.associatedLogId.size() <= 128 &&
+             data.principalEmail is string && data.principalEmail.size() <= 256 &&
+             data.callerIp is string && data.callerIp.size() <= 64 &&
+             data.ruleId is string && data.ruleId in ['REPEATED_FAILURES', 'UNUSUAL_IAM_CHANGE', 'SENSITIVE_ADMIN_OP', 'ACTIVITY_SPIKE', 'UNUSUAL_IP'] &&
+             data.detectionReason is string && data.detectionReason.size() <= 500 &&
+             data.status is string && data.status in ['OPEN', 'REVIEWED', 'CONFIRMED_INCIDENT', 'DISMISSED'] &&
+             data.source is string && data.source in ['GCP_LIVE', 'DEMO'] &&
+             data.reviewedBy is string && data.reviewedBy.size() <= 256 &&
+             data.reviewedAt is string && data.reviewedAt.size() <= 64 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidRetentionExecution(data) {
+      return data.keys().hasAll(['id', 'policyId', 'policyName', 'logCategory', 'retentionDays', 'cutoffTimestamp', 'deletedCount', 'executedBy', 'status', 'details', 'executedAt']) &&
+             data.keys().hasOnly(['id', 'policyId', 'policyName', 'logCategory', 'retentionDays', 'cutoffTimestamp', 'deletedCount', 'executedBy', 'status', 'details', 'executedAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.policyId is string && data.policyId.size() >= 1 && data.policyId.size() <= 128 &&
+             data.policyName is string && data.policyName.size() >= 1 && data.policyName.size() <= 120 &&
+             data.logCategory is string && data.logCategory.size() >= 1 && data.logCategory.size() <= 64 &&
+             data.retentionDays is number && data.retentionDays >= 1 && data.retentionDays <= 3650 &&
+             data.cutoffTimestamp is string && data.cutoffTimestamp.size() >= 1 && data.cutoffTimestamp.size() <= 64 &&
+             data.deletedCount is number && data.deletedCount >= 0 &&
+             data.executedBy is string && data.executedBy.size() >= 1 && data.executedBy.size() <= 256 &&
+             data.status is string && data.status in ['COMPLETED', 'DRY_RUN', 'FAILED'] &&
+             data.details is string && data.details.size() <= 500 &&
+             data.executedAt is timestamp;
+    }
+
+    function isValidIntegrationSetting(data) {
+      return data.keys().hasAll(['id', 'gcpProjectId', 'logFilter', 'connectionStatus', 'lastSyncAt', 'lastSyncCount', 'lastError', 'demoMode', 'updatedBy', 'updatedAt']) &&
+             data.keys().hasOnly(['id', 'gcpProjectId', 'logFilter', 'connectionStatus', 'lastSyncAt', 'lastSyncCount', 'lastError', 'demoMode', 'updatedBy', 'updatedAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.gcpProjectId is string && data.gcpProjectId.size() <= 128 &&
+             data.logFilter is string && data.logFilter.size() >= 1 && data.logFilter.size() <= 500 &&
+             data.connectionStatus is string && data.connectionStatus in ['CONNECTED', 'DISCONNECTED', 'MISSING_CREDENTIALS', 'ERROR'] &&
+             data.lastSyncAt is string && data.lastSyncAt.size() <= 64 &&
+             data.lastSyncCount is number && data.lastSyncCount >= 0 &&
+             data.lastError is string && data.lastError.size() <= 500 &&
+             data.demoMode is bool &&
+             data.updatedBy is string && data.updatedBy.size() <= 256 &&
+             data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(userId) && isValidUser(incoming()) &&
+                       incoming().uid == userId &&
+                       incoming().uid == request.auth.uid &&
+                       incoming().createdAt == request.time &&
+                       incoming().lastLoginAt == request.time &&
+                       (incoming().role in ['analyst', 'viewer'] || isAdmin());
+      allow update: if isSignedIn() && isValidId(userId) && isValidUser(incoming()) &&
+                       incoming().uid == existing().uid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().lastLoginAt == request.time && (
+                         (request.auth.uid == userId && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'lastLoginAt'])) ||
+                         (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'lastLoginAt']))
+                       );
+      allow delete: if isSignedIn() && isValidId(userId) && isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && resource.data.source in ['GCP_LIVE', 'DEMO'];
+      allow list: if isSignedIn() && resource.data.source in ['GCP_LIVE', 'DEMO'];
+      allow create: if isSignedIn() && isValidId(logId) && isValidAuditLog(incoming()) &&
+                       incoming().id == logId &&
+                       incoming().createdAt == request.time &&
+                       isAdmin();
+      allow update: if isSignedIn() && isValidId(logId) && isValidAuditLog(incoming()) &&
+                       incoming().id == existing().id &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['severity', 'statusMessage']) &&
+                       isAdmin();
+      allow delete: if isSignedIn() && isValidId(logId) && isAdmin();
+    }
+
+    match /retention_policies/{policyId} {
+      allow get: if isSignedIn() && isValidId(policyId) && resource.data.status in ['ENABLED', 'DISABLED'];
+      allow list: if isSignedIn() && resource.data.status in ['ENABLED', 'DISABLED'];
+      allow create: if isSignedIn() && isValidId(policyId) && isValidRetentionPolicy(incoming()) &&
+                       incoming().id == policyId &&
+                       incoming().createdBy == request.auth.uid &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       isAdmin();
+      allow update: if isSignedIn() && isValidId(policyId) && isValidRetentionPolicy(incoming()) &&
+                       incoming().id == existing().id &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'logCategory', 'retentionDays', 'status', 'lastExecutionAt', 'lastDeletedCount', 'updatedAt']) &&
+                       isAdmin();
+      allow delete: if isSignedIn() && isValidId(policyId) && isAdmin();
+    }
+
+    match /security_alerts/{alertId} {
+      allow get: if isSignedIn() && isValidId(alertId) && resource.data.source in ['GCP_LIVE', 'DEMO'];
+      allow list: if isSignedIn() && resource.data.source in ['GCP_LIVE', 'DEMO'];
+      allow create: if isSignedIn() && isValidId(alertId) && isValidSecurityAlert(incoming()) &&
+                       incoming().id == alertId &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       isAnalystOrAdmin();
+      allow update: if isSignedIn() && isValidId(alertId) && isValidSecurityAlert(incoming()) &&
+                       incoming().id == existing().id &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt', 'updatedAt']) &&
+                       isAnalystOrAdmin();
+      allow delete: if isSignedIn() && isValidId(alertId) && isAdmin();
+    }
+
+    match /retention_executions/{executionId} {
+      allow get: if isSignedIn() && isValidId(executionId) && resource.data.status in ['COMPLETED', 'DRY_RUN', 'FAILED'];
+      allow list: if isSignedIn() && resource.data.status in ['COMPLETED', 'DRY_RUN', 'FAILED'];
+      allow create: if isSignedIn() && isValidId(executionId) && isValidRetentionExecution(incoming()) &&
+                       incoming().id == executionId &&
+                       incoming().executedAt == request.time &&
+                       isAdmin();
+      allow update: if isSignedIn() && isValidId(executionId) && isValidRetentionExecution(incoming()) &&
+                       incoming().id == existing().id &&
+                       incoming().executedAt == existing().executedAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['details', 'status']) &&
+                       isAdmin();
+      allow delete: if isSignedIn() && isValidId(executionId) && isAdmin();
+    }
+
+    match /integration_settings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId) && resource.data.connectionStatus in ['CONNECTED', 'DISCONNECTED', 'MISSING_CREDENTIALS', 'ERROR'];
+      allow list: if isSignedIn() && resource.data.connectionStatus in ['CONNECTED', 'DISCONNECTED', 'MISSING_CREDENTIALS', 'ERROR'];
+      allow create: if isSignedIn() && isValidId(settingId) && isValidIntegrationSetting(incoming()) &&
+                       incoming().id == settingId &&
+                       incoming().updatedAt == request.time &&
+                       isAdmin();
+      allow update: if isSignedIn() && isValidId(settingId) && isValidIntegrationSetting(incoming()) &&
+                       incoming().id == existing().id &&
+                       incoming().updatedAt == request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['gcpProjectId', 'logFilter', 'connectionStatus', 'lastSyncAt', 'lastSyncCount', 'lastError', 'demoMode', 'updatedBy', 'updatedAt']) &&
+                       isAdmin();
+      allow delete: if isSignedIn() && isValidId(settingId) && isAdmin();
+    }
+  }
+}
